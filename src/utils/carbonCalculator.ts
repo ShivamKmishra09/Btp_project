@@ -1,4 +1,4 @@
-updated tree month code
+
 
 import { CalculatorInputs, CalculationResults, CPU, GPU, Location, PUE } from '@/types/calculator';
 
