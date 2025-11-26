@@ -1,3 +1,5 @@
+updated tree month code
+
 import { CalculatorInputs, CalculationResults, CPU, GPU, Location, PUE } from '@/types/calculator';
 
 // Constants from Green Algorithms methodology
@@ -42,8 +44,7 @@ export function calculateCarbonFootprint(
   }
   
   // Apply usage factor (Methodology: P_actual = P_tdp * usage_factor)
-  // UPDATED: Usage factor is set to 1 for all cases (100% utilization assumption)
-  const usageFactor = 1;
+  const usageFactor = inputs.coreType === 'CPU' ? inputs.cpuUsageFactor : inputs.gpuUsageFactor;
   coresPowerDraw = coresPowerDraw * usageFactor;
   
   // Calculate memory power draw
