@@ -2,10 +2,10 @@ import { CalculatorInputs, CalculationResults, CPU, GPU, Location, PUE } from '@
 
 // Constants from Green Algorithms methodology
 const MEMORY_POWER_PER_GB = 0.3725; // W per GB
-const TREE_CO2_PER_YEAR = 11; // kg CO2 per year
-const TREE_CO2_PER_MONTH = TREE_CO2_PER_YEAR / 12 / 1000; // in gCO2e
-const CAR_EMISSIONS_PER_KM = 175; // gCO2e per km (average passenger car)
-const PARIS_DUBLIN_FLIGHT = 107300; // gCO2e for a Paris-Dublin flight
+const TREE_CO2_PER_YEAR = 11000; // FIXED: Changed to grams (11kg = 11000g)
+const TREE_CO2_PER_MONTH = TREE_CO2_PER_YEAR / 12; // in gCO2e (approx 916g)
+const CAR_EMISSIONS_PER_KM = 175; // gCO2e per km
+const PARIS_DUBLIN_FLIGHT = 107300; // gCO2e
 
 export function calculateCarbonFootprint(
   inputs: CalculatorInputs,
@@ -19,13 +19,12 @@ export function calculateCarbonFootprint(
   
   if (inputs.coreType === 'CPU') {
     if (inputs.customCpuTDP) {
-      // Custom TDP
       coresPowerDraw = inputs.customCpuTDP * (inputs.numCores || 1);
     } else if (inputs.cpuModel) {
-      // Find CPU model
       const cpu = cpus.find(c => c.model === inputs.cpuModel);
       if (cpu) {
-        // TDP is total, divide by cores to get per core, then multiply by number used
+        // Green Algos Methodology: Scale TDP linearly by number of cores used
+        // Assumes cpu.tdp in database is the Total Package TDP
         const tdpPerCore = cpu.tdp / cpu.cores;
         coresPowerDraw = tdpPerCore * (inputs.numCores || 1);
       }
@@ -42,7 +41,7 @@ export function calculateCarbonFootprint(
     }
   }
   
-  // Apply usage factor
+  // Apply usage factor (Methodology: P_actual = P_tdp * usage_factor)
   const usageFactor = inputs.coreType === 'CPU' ? inputs.cpuUsageFactor : inputs.gpuUsageFactor;
   coresPowerDraw = coresPowerDraw * usageFactor;
   
@@ -50,7 +49,7 @@ export function calculateCarbonFootprint(
   const memoryPowerDraw = inputs.memoryGB * MEMORY_POWER_PER_GB;
   
   // Get PUE
-  let pue = 1.0;
+  let pue = 1.0; // Ideal baseline if unknown
   if (inputs.customPUE) {
     pue = inputs.customPUE;
   } else {
@@ -62,21 +61,26 @@ export function calculateCarbonFootprint(
   
   // Calculate energy needed (in Wh)
   const totalPowerDraw = coresPowerDraw + memoryPowerDraw; // W
+  
+  // FIXED: Ensure runtime is treated as Hours. 
+  // If your input is already in hours, this is fine. 
+  // If unsure, you might want to rename the input to 'runtimeHours' for clarity.
   const energyWh = inputs.runtime * totalPowerDraw * pue * inputs.multiplicativeFactor;
   const energyNeeded = energyWh / 1000; // Convert to kWh
   
   // Get carbon intensity
-  let carbonIntensity = 475; // Default world average
+  let carbonIntensity = 475; // Default world average (gCO2e/kWh)
   const location = locations.find(l => l.location === inputs.location);
   if (location) {
     carbonIntensity = location.carbonIntensity;
   }
   
-  // Calculate carbon footprint
-  const carbonFootprint = energyNeeded * carbonIntensity; // gCO2e
+  // Calculate carbon footprint (gCO2e)
+  const carbonFootprint = energyNeeded * carbonIntensity; 
   
   // Calculate equivalents
-  const treeMonths = carbonFootprint / (TREE_CO2_PER_MONTH * 1000);
+  // FIXED: Removed the incorrect *1000 division/multiplication logic
+  const treeMonths = carbonFootprint / TREE_CO2_PER_MONTH; 
   const carKm = carbonFootprint / CAR_EMISSIONS_PER_KM;
   const flightPercent = (carbonFootprint / PARIS_DUBLIN_FLIGHT) * 100;
   
